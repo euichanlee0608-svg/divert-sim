@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>측추력기 미사일 최적화 시뮬레이터 · Lateral-Thruster Interceptor Sim</title>
+<meta name="description" content="비례항법 유도 요격 미사일이 회피 드론을 요격하는 2D 물리 시뮬레이터. 최적화 4종 비교와 궤적 애니메이션.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav><div class="wrap">
+  <div class="brand"><span class="dot"></span><span>DIVERT-SIM</span>
+    <small>2D interception physics</small></div>
+  <div class="navr">
+    <a class="navlink" href="#results" data-k="nav_results">결과</a>
+    <a class="navlink" href="#how" data-k="nav_how">원리</a>
+    <a class="navlink" href="#findings" data-k="nav_findings">발견</a>
+    <div class="langtog"><button data-lang="ko" class="on">KO</button><button data-lang="en">EN</button></div>
+  </div>
+</div></nav>
+
+<header><div class="wrap">
+  <div class="eyebrow" data-k="hero_eyebrow">최적 제어 · 유도 · 강화학습 포트폴리오</div>
+  <h1 data-k="hero_title">회피하는 드론을,<br><em>측추력기</em>로 요격하기.</h1>
+  <p class="lead" data-k="hero_lead">비례항법으로 유도되는 소형 요격 미사일이 랜덤하게 회피하는 드론을 쫓는 2D 물리 엔진. 측추력기의 위치·힘·유도게인을 4가지 최적화 알고리즘으로 설계하고, 궤적을 프레임 단위로 재생한다.</p>
+  <div class="chips">
+    <span class="chip" data-k="chip1"><b>비례항법</b> 유도</span>
+    <span class="chip" data-k="chip2"><b>RK4</b> 물리 적분</span>
+    <span class="chip" data-k="chip3"><b>4종</b> 최적화 비교</span>
+    <span class="chip" data-k="chip4">실제 <b>Coyote Block 2</b>급 앵커링</span>
+    <span class="chip" data-k="chip5">지연·잡음 <b>현실 모델</b></span>
+  </div>
+
+  <div class="console" id="sim">
+    <div class="tabs" id="tabs"></div>
+    <div class="stage">
+      <canvas id="cv"></canvas>
+      <div class="hud" id="hud"></div>
+      <div class="verdict" id="verdict"></div>
+    </div>
+    <div class="scndesc"><span class="tag" id="scntag"></span><span id="scndesc"></span></div>
+    <div class="controls">
+      <button class="play" id="play">❚❚</button>
+      <input type="range" class="scrub" id="scrub" min="0" max="100" value="0">
+      <div class="legend">
+        <span><i style="background:#6ba9ff"></i><span data-k="lg_m">미사일</span></span>
+        <span><i style="background:#ff5d54"></i><span data-k="lg_d">드론</span></span>
+        <span><i style="background:#f5a524"></i><span data-k="lg_t">측추력·기폭</span></span>
+      </div>
+    </div>
+  </div>
+</div></header>
+
+<section id="results"><div class="wrap">
+  <h2 class="sec-h reveal" data-k="res_h">최적화 4종 비교</h2>
+  <p class="sec-sub reveal" data-k="res_sub">동일한 목적함수(요격시간·연료·정확도의 가중합)를 최소화한다. 운용점: 드론 7g 회피 / 탐지거리 250m, 지연 반영. 낮을수록 좋음(J).</p>
+  <div class="cmp reveal" id="cmp"></div>
+
+  <h2 class="sec-h reveal" style="margin-top:64px" data-k="sw_h">핵심 결과 — 요격에 필요한 최소 측추력 권한</h2>
+  <p class="sec-sub reveal" data-k="sw_sub">위협(드론 회피 g × 탐지거리)이 거세질수록 명중에 필요한 측추력이 커진다. 'X'는 Coyote급 권한(≤300N)으로 90% 격추가 물리적으로 불가능한 영역 — 현실적 지연을 넣자 나타났다.</p>
+  <div class="sweepwrap reveal">
+    <div class="heat">
+      <div class="heat-title" data-k="sw_t1">필요 최소 측추력 F_max [N] · 격추율 ≥ 90%</div>
+      <div class="grid4" id="heat"></div>
+      <div class="axl" data-k="sw_x">← 탐지거리 R_det [m] →</div>
+    </div>
+    <div>
+      <div class="mech" style="grid-template-columns:1fr">
+        <div><h4><span class="k">01</span><span data-k="sw_i1t">권한이 지배한다</span></h4>
+          <p data-k="sw_i1">필요 측추력이 위협에 따라 <code>125N → 300N</code>으로 상승. 요격 성패를 좌우하는 건 미사일의 <b>divert 권한</b>이다.</p></div>
+        <div><h4><span class="k">02</span><span data-k="sw_i2t">불가능 영역</span></h4>
+          <p data-k="sw_i2">지연(시커·오토파일럿·자세루프)을 반영하면 9g 드론은 Coyote급으로 대부분 요격 불가('X'). 이상화된 즉응 제어일 때는 사라졌던 한계다.</p></div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<section id="how"><div class="wrap">
+  <h2 class="sec-h reveal" data-k="how_h">어떻게 작동하나</h2>
+  <p class="sec-sub reveal" data-k="how_sub">물리는 뉴턴 강체 동역학, 유도는 비례항법, 설계 탐색은 네 알고리즘이 같은 목적함수를 놓고 겨룬다.</p>
+  <div class="mech reveal">
+    <div><h4><span class="k">GUIDANCE</span><span data-k="m_pn_t">비례항법 (PN)</span></h4>
+      <p data-k="m_pn">표적이 시야각에서 미끄러지는 속도(LOS rate)에 비례해 가속: <code>a = N·Vc·λ̇</code>. 이를 측추력으로 실현한다. 유도게인 N은 설계변수.</p></div>
+    <div><h4><span class="k">OBJECTIVE</span><span data-k="m_obj_t">공유 목적함수</span></h4>
+      <p data-k="m_obj"><code>J = w₁·시간 + w₂·연료 + w₃·최소접근</code>. 회피가 랜덤이라 설계마다 8회 몬테카를로 평균으로 강건 성능을 평가한다.</p></div>
+    <div><h4><span class="k">GRID · GRADIENT</span><span data-k="m_gg_t">격자탐색 · 경사법</span></h4>
+      <p data-k="m_gg">격자는 모든 조합을 전수 시도(전역보장·느림). 경사법(L-BFGS-B)은 기울기로 내려가 빠르나 국소최적·과추력에 빠진다.</p></div>
+    <div><h4><span class="k">GENETIC · PPO</span><span data-k="m_gp_t">유전 알고리즘 · 강화학습</span></h4>
+      <p data-k="m_gp">유전 알고리즘은 우수해를 교배·변이시켜 진화(표본효율 우수). PPO는 유도법 없이 매 스텝 측추력을 시행착오로 학습한다.</p></div>
+  </div>
+</div></section>
+
+<section id="findings"><div class="wrap">
+  <h2 class="sec-h reveal" data-k="fd_h">정직한 발견</h2>
+  <p class="sec-sub reveal" data-k="fd_sub">결과를 미화하지 않았다. 실험 설계의 결함을 찾아 고친 과정과 스케일 의존적 결론을 그대로 남긴다.</p>
+  <div class="finds reveal">
+    <div class="find"><div class="n">01</div><div>
+      <b data-k="fd1t">유전 알고리즘이 우승.</b>
+      <p data-k="fd1">그리드의 1/5 평가(458회)로 최소 목적함수와 최소 연료를 달성. 경사법은 추력을 과하게 배정해 연료를 낭비했고, PPO는 요격을 배우나 종말 정밀도가 부족했다.</p></div></div>
+    <div class="find"><div class="n">02</div><div>
+      <b data-k="fd2t">'전방 장착 최적'은 스케일에 의존한다.</b>
+      <p data-k="fd2">큰 초음속 미사일에선 측추력기 장착 위치가 명중을 좌우했지만, 저속 소형 Coyote급에선 병진 divert 힘이 지배적이라 위치는 <b>연료만</b> 좌우했다. 이 반전을 그대로 보고한다.</p></div></div>
+    <div class="find"><div class="n">03</div><div>
+      <b data-k="fd3t">드론 생존은 peak-g가 아니라 속도가 좌우한다.</b>
+      <p data-k="fd3">느린 드론은 아무리 세게 꺾어도 짧은 종말시간 동안 멀리 못 도망친다. 회피 성패의 지배 변수는 드론 민첩성이 아니라 <b>속도 상한 × 요격탄 권한</b>이었다.</p></div></div>
+    <div class="find"><div class="n">04</div><div>
+      <b data-k="fd4t">가정은 모두 실제 제원에 앵커링.</b>
+      <p data-k="fd4">난이도를 억지로 만들지 않았다. 질량·속도·탄두는 Coyote Block 2 공개제원, 지연은 유도·자세루프 표준 시정수, 회피 g는 현실 드론 범위. 23개 자동 테스트로 물리를 기계 증명했다.</p></div></div>
+  </div>
+</div></section>
+
+<footer><div class="wrap foot">
+  <p data-k="ft_desc">2D 측추력기 요격 시뮬레이터. 파이썬 물리 엔진(RK4·비례항법·몬테카를로)으로 궤적을 계산해 JSON으로 내보내고, 브라우저 캔버스로 재생한다. 개인 연구 포트폴리오.</p>
+  <div style="display:flex;flex-direction:column;gap:7px">
+    <span class="src" data-k="ft_src">출처 · 앵커링</span>
+    <a class="src" href="https://en.wikipedia.org/wiki/Raytheon_Coyote" target="_blank" rel="noopener">Raytheon Coyote — Wikipedia</a>
+    <a class="src" href="https://www.rtx.com/raytheon/what-we-do/integrated-air-and-missile-defense/coyote" target="_blank" rel="noopener">Coyote C-UAS — RTX</a>
+    <span class="src">Proportional Navigation · Zarchan, Tactical &amp; Strategic Missile Guidance</span>
+    <span class="src">PPO · Schulman et al. 2017 (arXiv:1707.06347)</span>
+  </div>
+</div></footer>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+(function(){
+  var WEBAPP_URL='https://script.google.com/macros/s/AKfycbxWKySPAxWsYnoZ9zo7G2wUK2CusxPwjy1USt_DyCFmmIe_y2pu8lAKBluImAHXXKHv4A/exec';
+  var SITE='divert-sim';
+  try{
+    if(location.protocol==='file:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')return;
+    if(location.search.indexOf('owner=1')!==-1){localStorage.setItem('__is_owner__','1');}
+    else if(localStorage.getItem('__is_owner__')!=='1'){
+      var img=new Image();
+      img.src=WEBAPP_URL+'?ref='+encodeURIComponent(SITE+'|'+(document.referrer||'direct'));
+    }
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
