@@ -48,6 +48,12 @@
     miss_t: "Missed", miss_p: "The drone slipped past. This is exactly why automatic guidance exists.",
     retry: "Try again",
     p_time: "time", p_spd: "missile", p_thr: "thrust", p_rng: "range",
+    g_thr: "thrust",
+    lb_ph: "Your name to submit", lb_sub: "Submit", lb_sending: "Submitting…",
+    lb_ok: "Submitted", lb_rank: "", lb_fail: "Could not submit (invalid run)",
+    lb_h: "Leaderboard", lb_lead: "The fastest intercepts, and the ones that used the least thrust. Score a hit above to add your name.",
+    lb_t1: "Fastest time", lb_t2: "Least thrust",
+    lb_empty: "No scores yet. Be the first.", lb_off: "Could not load the leaderboard.",
   };
   var lang = "ko";
   function applyLang() {
@@ -81,6 +87,33 @@
     ctx.closePath(); ctx.fill(); ctx.restore();
   }
 
+  /* ================= LEADERBOARD (global · Supabase) ================= */
+  var LB_URL = "https://kjlknxwzpmdzawwrurva.supabase.co/functions/v1/divert-leaderboard";
+  function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }); }
+  function lbSubmit(name, st) {
+    return fetch(LB_URL, { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "submit", name: name, time_s: st.time, fuel: st.fuel, dist: st.dist }) }).then(function (r) { return r.json(); });
+  }
+  function lbRow(rank, name, big, small) {
+    return '<li><span class="lb-rank">' + rank + '</span><span class="lb-name">' + esc(name) +
+      '</span><span class="lb-val">' + big + '</span><span class="lb-sm">' + small + '</span></li>';
+  }
+  function renderLB(d) {
+    var te = document.getElementById("lb-time"), fe = document.getElementById("lb-fuel");
+    if (!te) return;
+    var empty = '<li class="lb-empty">' + T("lb_empty", "아직 기록이 없습니다. 첫 주자가 되어보세요.") + '</li>';
+    if (!d || !d.ok) { te.innerHTML = empty; if (fe) fe.innerHTML = empty; return; }
+    te.innerHTML = d.byTime.length ? d.byTime.map(function (r, i) {
+      return lbRow(i + 1, r.name, (+r.time_s).toFixed(2) + 's', T("g_thr", "측추력") + " " + (+r.fuel).toFixed(1)); }).join("") : empty;
+    fe.innerHTML = d.byFuel.length ? d.byFuel.map(function (r, i) {
+      return lbRow(i + 1, r.name, (+r.fuel).toFixed(1), (+r.time_s).toFixed(2) + 's'); }).join("") : empty;
+  }
+  function lbFetch() {
+    fetch(LB_URL, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "top" }) })
+      .then(function (r) { return r.json(); }).then(renderLB)
+      .catch(function () { var te = document.getElementById("lb-time"); if (te) te.innerHTML = '<li class="lb-empty">' + T("lb_off", "순위표를 불러오지 못했습니다.") + '</li>'; });
+  }
+
   /* ================= INTERACTIVE GAME ================= */
   var GAME = (function () {
     var cv = document.getElementById("game"); if (!cv) return null;
@@ -89,7 +122,7 @@
       knob = document.getElementById("knob");
     var WD = 1000, HT = 560, ctx, W, H, scale, ox, oy;
     var state = "ready", steer = 0, keySteer = 0, dragSteer = 0;
-    var m, drone, mtrail, dtrail, tElapsed, blast;
+    var m, drone, mtrail, dtrail, tElapsed, blast, fuel, pathlen;
 
     function resize() { var f = fit(cv); ctx = f.ctx; W = f.w; H = f.h;
       scale = Math.min(W / WD, H / HT); ox = (W - WD * scale) / 2; oy = (H - HT * scale) / 2; draw(); }
@@ -99,17 +132,38 @@
     function reset() {
       m = { x: 90, y: 70, ang: 0.9, spd: 430 };
       drone = { x: 940, y: 430, vx: -150, vy: -10, adir: 0, at: 0 };
-      mtrail = []; dtrail = []; tElapsed = 0; blast = null;
+      mtrail = []; dtrail = []; tElapsed = 0; blast = null; fuel = 0; pathlen = 0;
     }
     function start() { reset(); state = "flying"; banner.classList.add("hide"); }
     function end(hit) {
       state = hit ? "hit" : "miss";
       banner.classList.remove("hide");
-      banner.innerHTML = '<div class="result ' + (hit ? "hit" : "miss") + '">' +
-        (hit ? T("hit_t", "명중!") : T("miss_t", "놓쳤습니다")) + '</div>' +
-        '<p>' + (hit ? T("hit_p", "드론을 요격했습니다. 실제 유도는 이 일을 자동으로, 매번 해냅니다.")
-          : T("miss_p", "드론이 빠져나갔습니다. 자동 유도가 필요한 이유가 바로 이것입니다.")) + '</p>' +
-        '<button class="btn res" id="retry">' + T("retry", "다시 하기") + '</button>';
+      if (hit) {
+        var stats = { time: +tElapsed.toFixed(2), fuel: +fuel.toFixed(2), dist: +(pathlen * 0.8).toFixed(1) };
+        banner.innerHTML =
+          '<div class="result hit">' + T("hit_t", "명중!") + '</div>' +
+          '<p class="runstat">' + T("r_time", "시간") + ' <b>' + stats.time.toFixed(2) + 's</b>' +
+          ' &nbsp;·&nbsp; ' + T("g_thr", "측추력") + ' <b>' + stats.fuel.toFixed(1) + '</b></p>' +
+          '<form class="lbform" id="lbform"><input id="lbname" maxlength="16" autocomplete="off" spellcheck="false" placeholder="' +
+          T("lb_ph", "이름을 남기고 순위 등록") + '"><button class="btn" type="submit">' + T("lb_sub", "등록") + '</button></form>' +
+          '<div class="lbmsg" id="lbmsg"></div>' +
+          '<button class="btn res" id="retry">' + T("retry", "다시 하기") + '</button>';
+        var form = document.getElementById("lbform"), msg = document.getElementById("lbmsg");
+        form.addEventListener("submit", function (e) {
+          e.preventDefault();
+          var nmEl = document.getElementById("lbname"), nm = nmEl.value.trim();
+          if (!nm) { nmEl.focus(); return; }
+          form.querySelector("button").disabled = true; msg.textContent = T("lb_sending", "등록 중…");
+          lbSubmit(nm, stats).then(function (r) {
+            if (r && r.ok) { msg.innerHTML = T("lb_ok", "등록 완료") + ' · <b>' + r.rank + T("lb_rank", "위") + '</b>'; form.style.display = "none"; lbFetch(); }
+            else { msg.textContent = T("lb_fail", "등록 실패 (기록이 유효하지 않습니다)"); form.querySelector("button").disabled = false; }
+          }).catch(function () { msg.textContent = T("lb_fail", "등록 실패"); form.querySelector("button").disabled = false; });
+        });
+      } else {
+        banner.innerHTML = '<div class="result miss">' + T("miss_t", "놓쳤습니다") + '</div>' +
+          '<p>' + T("miss_p", "드론이 빠져나갔습니다. 자동 유도가 필요한 이유가 바로 이것입니다.") + '</p>' +
+          '<button class="btn res" id="retry">' + T("retry", "다시 하기") + '</button>';
+      }
       document.getElementById("retry").onclick = start;
     }
     function relabel() {
@@ -123,6 +177,7 @@
       // missile: constant speed, steering turns heading (bounded turn rate = divert authority)
       m.ang -= steer * 2.6 * dt;
       m.x += Math.cos(m.ang) * m.spd * dt; m.y += Math.sin(m.ang) * m.spd * dt;
+      fuel += Math.abs(steer) * dt; pathlen += m.spd * dt;   // steering effort + path length
       mtrail.push([m.x, m.y]); if (mtrail.length > 90) mtrail.shift();
       // drone: drift left + random evasion when missile near
       var dist = Math.hypot(m.x - drone.x, m.y - drone.y);
@@ -335,4 +390,6 @@
     var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }); }, { threshold: .12 });
     document.querySelectorAll(".reveal").forEach(function (el) { io.observe(el); });
   } else document.querySelectorAll(".reveal").forEach(function (el) { el.classList.add("in"); });
+
+  lbFetch();
 })();
