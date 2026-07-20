@@ -35,21 +35,23 @@
       <div class="gbanner" id="gbanner">
         <h3 data-k="g_ready_t">준비되셨나요?</h3>
         <p data-k="g_ready_p">조이스틱을 좌우로 밀어 미사일을 드론 쪽으로 유도하세요. 살상 반경 안에 들면 명중입니다.</p>
-        <button class="btn" id="startbtn" data-k="g_start">발사</button>
+        <div class="btnrow"><button class="btn" id="startbtn" data-k="g_start">발사</button><button class="btn ghost" data-lb data-k="lb_view">순위보기</button></div>
       </div>
     </div>
     <div class="playnote" data-k="g_note">전투용이 아니라 물리·제어를 눈으로 익히는 교육용 시뮬레이션입니다. 회피 드론은 무작위로 방향을 틉니다.</div>
   </div>
 </header>
 
-<section class="lb" id="scores"><div class="wrap">
-  <h2 class="lb-h" data-k="lb_h">순위표</h2>
-  <p class="lb-sub" data-k="lb_lead">가장 빠르게, 그리고 가장 적은 측추력으로 요격한 기록입니다. 위 게임에서 명중하면 이름을 남길 수 있습니다.</p>
-  <div class="lb-grid">
-    <div class="lb-col"><div class="lb-ct" data-k="lb_t1">최단 시간</div><ol class="lb-list" id="lb-time"></ol></div>
-    <div class="lb-col"><div class="lb-ct" data-k="lb_t2">최소 측추력</div><ol class="lb-list" id="lb-fuel"></ol></div>
+<div class="lbmodal" id="lbmodal" aria-hidden="true">
+  <div class="lbmodal-box" role="dialog" aria-modal="true" aria-labelledby="lbmt">
+    <div class="lbmodal-head">
+      <h3 id="lbmt" data-k="lb_h">순위표</h3>
+      <button class="lbmodal-x" id="lbclose" aria-label="닫기">&times;</button>
+    </div>
+    <p class="lbmodal-sub" data-k="lb_lead">가장 빠르게 요격한 순서입니다. 시간이 같으면 측추력을 적게 쓴 기록이 위로 갑니다.</p>
+    <ol class="lb-list" id="lb-list"></ol>
   </div>
-</div></section>
+</div>
 
 <div class="explain"><div class="wrap">
   <h2 data-k="ex_h">해보니 어땠나요?</h2>

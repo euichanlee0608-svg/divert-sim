@@ -70,16 +70,24 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 .lbform .btn{padding:10px 20px;font-size:14px}
 .lbmsg{font-family:var(--mono);font-size:13px;color:var(--ok);min-height:16px}
 
-/* leaderboard */
-.lb{padding:52px 0 8px}
-.lb-h{font-family:var(--serif);font-size:clamp(21px,3vw,29px);font-weight:600;text-align:center;margin:0 0 8px}
-.lb-sub{text-align:center;color:var(--muted);font-size:14.5px;max-width:52ch;margin:0 auto 28px}
-.lb-grid{display:grid;grid-template-columns:1.25fr 1fr;gap:22px;max-width:860px;margin:0 auto}
-@media(max-width:680px){.lb-grid{grid-template-columns:1fr;gap:16px}}
-.lb-col{border:1px solid var(--line);border-radius:var(--r);background:var(--card);overflow:hidden}
-.lb-ct{font-family:var(--mono);font-size:12px;color:var(--accent);padding:13px 18px;border-bottom:1px solid var(--line);
-  letter-spacing:.02em;background:var(--panel)}
-.lb-list{list-style:none;margin:0;padding:6px 0}
+/* button row + ghost button */
+.btnrow{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line2)}
+.btn.ghost:hover{background:var(--panel);border-color:var(--accent);color:var(--accent)}
+
+/* leaderboard modal (popup) */
+.lbmodal{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;
+  padding:20px;background:rgba(38,35,29,.42);backdrop-filter:blur(3px)}
+.lbmodal.on{display:flex;animation:lbfade .18s ease}
+@keyframes lbfade{from{opacity:0}to{opacity:1}}
+.lbmodal-box{width:100%;max-width:440px;max-height:82vh;overflow:auto;background:var(--card);
+  border:1px solid var(--line2);border-radius:var(--r);box-shadow:0 30px 80px -24px rgba(60,45,30,.5)}
+.lbmodal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 10px}
+.lbmodal-head h3{font-family:var(--serif);font-size:21px;font-weight:600;margin:0}
+.lbmodal-x{background:none;border:none;font-size:24px;line-height:1;color:var(--muted);cursor:pointer;padding:0 4px}
+.lbmodal-x:hover{color:var(--ink)}
+.lbmodal-sub{margin:0 20px 8px;color:var(--muted);font-size:13.5px;line-height:1.55}
+.lb-list{list-style:none;margin:0;padding:6px 8px 12px}
 .lb-list li{display:grid;grid-template-columns:26px 1fr auto auto;align-items:baseline;gap:12px;
   padding:9px 18px;font-size:14.5px}
 .lb-list li+li{border-top:1px solid var(--line)}

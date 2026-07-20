@@ -51,8 +51,8 @@
     g_thr: "thrust",
     lb_ph: "Your name to submit", lb_sub: "Submit", lb_sending: "Submitting…",
     lb_ok: "Submitted", lb_rank: "", lb_fail: "Could not submit (invalid run)",
-    lb_h: "Leaderboard", lb_lead: "The fastest intercepts, and the ones that used the least thrust. Score a hit above to add your name.",
-    lb_t1: "Fastest time", lb_t2: "Least thrust",
+    lb_h: "Leaderboard", lb_lead: "Ranked by fastest intercept; ties go to the run that used less thrust.",
+    lb_view: "Leaderboard", lb_loading: "Loading…",
     lb_empty: "No scores yet. Be the first.", lb_off: "Could not load the leaderboard.",
   };
   var lang = "ko";
@@ -99,19 +99,30 @@
       '</span><span class="lb-val">' + big + '</span><span class="lb-sm">' + small + '</span></li>';
   }
   function renderLB(d) {
-    var te = document.getElementById("lb-time"), fe = document.getElementById("lb-fuel");
-    if (!te) return;
+    var el = document.getElementById("lb-list"); if (!el) return;
     var empty = '<li class="lb-empty">' + T("lb_empty", "아직 기록이 없습니다. 첫 주자가 되어보세요.") + '</li>';
-    if (!d || !d.ok) { te.innerHTML = empty; if (fe) fe.innerHTML = empty; return; }
-    te.innerHTML = d.byTime.length ? d.byTime.map(function (r, i) {
+    if (!d || !d.ok) { el.innerHTML = empty; return; }
+    el.innerHTML = d.scores.length ? d.scores.map(function (r, i) {
       return lbRow(i + 1, r.name, (+r.time_s).toFixed(2) + 's', T("g_thr", "측추력") + " " + (+r.fuel).toFixed(1)); }).join("") : empty;
-    fe.innerHTML = d.byFuel.length ? d.byFuel.map(function (r, i) {
-      return lbRow(i + 1, r.name, (+r.fuel).toFixed(1), (+r.time_s).toFixed(2) + 's'); }).join("") : empty;
   }
   function lbFetch() {
     fetch(LB_URL, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "top" }) })
       .then(function (r) { return r.json(); }).then(renderLB)
-      .catch(function () { var te = document.getElementById("lb-time"); if (te) te.innerHTML = '<li class="lb-empty">' + T("lb_off", "순위표를 불러오지 못했습니다.") + '</li>'; });
+      .catch(function () { var el = document.getElementById("lb-list"); if (el) el.innerHTML = '<li class="lb-empty">' + T("lb_off", "순위표를 불러오지 못했습니다.") + '</li>'; });
+  }
+  var lbmodal = document.getElementById("lbmodal");
+  function openLB() {
+    if (!lbmodal) return;
+    var el = document.getElementById("lb-list"); if (el) el.innerHTML = '<li class="lb-empty">' + T("lb_loading", "불러오는 중…") + '</li>';
+    lbmodal.classList.add("on"); lbmodal.setAttribute("aria-hidden", "false"); lbFetch();
+  }
+  function closeLB() { if (lbmodal) { lbmodal.classList.remove("on"); lbmodal.setAttribute("aria-hidden", "true"); } }
+  if (lbmodal) {
+    document.getElementById("lbclose").onclick = closeLB;
+    lbmodal.addEventListener("click", function (e) { if (e.target === lbmodal) closeLB(); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeLB(); });
+    document.addEventListener("click", function (e) { if (e.target.closest("[data-lb]")) openLB(); });
+    if (/[?&]lb/.test(location.search)) setTimeout(openLB, 400);
   }
 
   /* ================= INTERACTIVE GAME ================= */
@@ -147,7 +158,8 @@
           '<form class="lbform" id="lbform"><input id="lbname" maxlength="16" autocomplete="off" spellcheck="false" placeholder="' +
           T("lb_ph", "이름을 남기고 순위 등록") + '"><button class="btn" type="submit">' + T("lb_sub", "등록") + '</button></form>' +
           '<div class="lbmsg" id="lbmsg"></div>' +
-          '<button class="btn res" id="retry">' + T("retry", "다시 하기") + '</button>';
+          '<div class="btnrow"><button class="btn res" id="retry">' + T("retry", "다시 하기") + '</button>' +
+          '<button class="btn ghost" data-lb>' + T("lb_view", "순위보기") + '</button></div>';
         var form = document.getElementById("lbform"), msg = document.getElementById("lbmsg");
         form.addEventListener("submit", function (e) {
           e.preventDefault();
@@ -162,7 +174,8 @@
       } else {
         banner.innerHTML = '<div class="result miss">' + T("miss_t", "놓쳤습니다") + '</div>' +
           '<p>' + T("miss_p", "드론이 빠져나갔습니다. 자동 유도가 필요한 이유가 바로 이것입니다.") + '</p>' +
-          '<button class="btn res" id="retry">' + T("retry", "다시 하기") + '</button>';
+          '<div class="btnrow"><button class="btn res" id="retry">' + T("retry", "다시 하기") + '</button>' +
+          '<button class="btn ghost" data-lb>' + T("lb_view", "순위보기") + '</button></div>';
       }
       document.getElementById("retry").onclick = start;
     }
@@ -390,6 +403,4 @@
     var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }); }, { threshold: .12 });
     document.querySelectorAll(".reveal").forEach(function (el) { io.observe(el); });
   } else document.querySelectorAll(".reveal").forEach(function (el) { el.classList.add("in"); });
-
-  lbFetch();
 })();
