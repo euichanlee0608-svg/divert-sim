@@ -40,7 +40,8 @@
     fd2t: "The design conclusion depended on missile size.", fd2: "On a large supersonic missile the position of the sideways thruster decided the hit, but on this slow, small class the force itself dominates, so position only affected fuel.",
     fd3t: "The drone's survival was set by speed, not agility.", fd3: "A slow drone cannot get far in the short terminal window no matter how hard it turns. The decisive variables were the drone's speed limit and the missile's force.",
     fd4t: "The numbers came from real specifications.", fd4: "Mass, speed and warhead follow public data for a small counter-drone interceptor; delays follow standard guidance and attitude time constants; evasion follows real drone ranges. The physics is checked by 23 automated tests.",
-    ft_desc: "A 2D short-range air-defense interception simulator. A Python physics engine computes the trajectories replayed in the browser, and the game at the top is steered live. Personal research portfolio.",
+    ft_desc: "A 2D physics simulation of guidance and optimal design for a short-range air-defense interceptor. Proportional-navigation guidance is implemented in the engine, and four optimization methods are compared under identical conditions. Mass, speed and warhead figures follow public data for a small counter-drone interceptor and standard references, and the physics is checked by automated tests. The steering demo at the top runs live in the browser.",
+    ft_srch: "Sources", ft_back: "See the full portfolio →",
     // game runtime
     r_time: "time", r_dist: "range", r_spd: "speed",
     hit_t: "Hit", hit_p: "You intercepted the drone. Real guidance does this automatically, every time.",
