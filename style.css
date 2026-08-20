@@ -1,3 +1,5 @@
+/* 한글 줄바꿈: 단어 중간에서 끊지 않되, 끊을 데가 없으면 넘치지 않게 (플레이북 §2-①) */
+body{word-break:keep-all;overflow-wrap:break-word}
 :root{
   --bg:#faf9f5; --bg2:#f2efe6; --card:#ffffff; --panel:#f5f2ea;
   --line:#e7e2d6; --line2:#dcd6c6;
