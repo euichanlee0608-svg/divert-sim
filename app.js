@@ -157,7 +157,7 @@
       drone = { x: 940, y: 430, vx: -150, vy: -10, adir: 0, at: 0 };
       mtrail = []; dtrail = []; tElapsed = 0; blast = null; fuel = 0; pathlen = 0;
     }
-    var sub = null, endAt = 0;   // this run's leaderboard state, kept when the language is switched: {name, done, html}
+    var sub = null, endAt = 0;   // this run's leaderboard state, kept when the language is switched: {name, sending, done, rank}
     function start() {
       reset(); state = "flying"; banner.classList.add("hide"); sub = null;
       var st = cv.parentNode, r = st.getBoundingClientRect();   // joystick sits at the stage bottom: keep it on screen
@@ -178,19 +178,24 @@
           '<div class="btnrow"><button class="btn res" id="retry">' + T("retry", "다시 하기") + '</button>' +
           '<button class="btn ghost" data-lb>' + T("lb_view", "순위보기") + '</button></div>';
         var form = document.getElementById("lbform"), msg = document.getElementById("lbmsg");
-        sub = sub || { name: "", done: false, rank: 0 };
+        sub = sub || { name: "", sending: false, done: false, rank: 0 };
         document.getElementById("lbname").value = sub.name;
         if (sub.done) { msg.innerHTML = T("lb_ok", "등록 완료") + ' · <b>' + rankTxt(sub.rank) + '</b>'; form.style.display = "none"; }
+        else if (sub.sending) { form.querySelector("button").disabled = true; msg.textContent = T("lb_sending", "등록 중…"); }
         document.getElementById("lbname").addEventListener("input", function (e) { if (sub) sub.name = e.target.value; });
         form.addEventListener("submit", function (e) {
           e.preventDefault();
           var nmEl = document.getElementById("lbname"), nm = nmEl.value.trim();
           if (!nm) { nmEl.focus(); return; }
           form.querySelector("button").disabled = true; msg.className = "lbmsg"; msg.textContent = T("lb_sending", "등록 중…");
+          var my = sub; my.sending = true;
+          // the form may have been redrawn (language switch) or a new run started while waiting: write to the current one only
+          function cur() { return my === sub && state === "hit" ? { f: document.getElementById("lbform"), m: document.getElementById("lbmsg") } : null; }
+          function fail(txt) { my.sending = false; var u = cur(); if (!u) return; u.m.className = "lbmsg err"; u.m.textContent = txt; u.f.querySelector("button").disabled = false; }
           lbSubmit(nm, stats).then(function (r) {
-            if (r && r.ok) { sub.done = true; sub.rank = r.rank; msg.innerHTML = T("lb_ok", "등록 완료") + ' · <b>' + rankTxt(r.rank) + '</b>'; form.style.display = "none"; lbFetch(); }
-            else { console.warn("leaderboard submit rejected", r && r.err); msg.className = "lbmsg err"; msg.textContent = lbErr(r); form.querySelector("button").disabled = false; }
-          }).catch(function (e) { console.warn("leaderboard submit failed", e); msg.className = "lbmsg err"; msg.textContent = T("lb_net", "연결이 불안정해 등록하지 못했습니다. 다시 눌러 주세요."); form.querySelector("button").disabled = false; });
+            if (r && r.ok) { my.sending = false; my.done = true; my.rank = r.rank; var u = cur(); if (u) { u.m.className = "lbmsg"; u.m.innerHTML = T("lb_ok", "등록 완료") + ' · <b>' + rankTxt(r.rank) + '</b>'; u.f.style.display = "none"; } lbFetch(); }
+            else { console.warn("leaderboard submit rejected", r && r.err); fail(lbErr(r)); }
+          }).catch(function (e) { console.warn("leaderboard submit failed", e); fail(T("lb_net", "연결이 불안정해 등록하지 못했습니다. 다시 눌러 주세요.")); });
         });
       } else {
         banner.innerHTML = '<div class="result miss">' + T("miss_t", "놓쳤습니다") + '</div>' +
