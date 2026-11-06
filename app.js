@@ -145,9 +145,14 @@
       drone = { x: 940, y: 430, vx: -150, vy: -10, adir: 0, at: 0 };
       mtrail = []; dtrail = []; tElapsed = 0; blast = null; fuel = 0; pathlen = 0;
     }
-    function start() { reset(); state = "flying"; banner.classList.add("hide"); }
+    var endAt = 0;
+    function start() {
+      reset(); state = "flying"; banner.classList.add("hide");
+      var st = cv.parentNode, r = st.getBoundingClientRect();   // joystick sits at the stage bottom: keep it on screen
+      if (r.top < 0 || r.bottom > innerHeight) st.scrollIntoView({ block: r.height > innerHeight ? "start" : "nearest", behavior: reduce ? "auto" : "smooth" });
+    }
     function end(hit) {
-      state = hit ? "hit" : "miss";
+      state = hit ? "hit" : "miss"; endAt = Date.now();
       banner.classList.remove("hide");
       if (hit) {
         var stats = { time: +tElapsed.toFixed(2), fuel: +fuel.toFixed(2), dist: +(pathlen * 0.8).toFixed(1) };
@@ -271,6 +276,13 @@
 
     // input: keyboard
     addEventListener("keydown", function (e) {
+      var tg = e.target, tn = tg && tg.tagName;
+      if (tn === "INPUT" || tn === "TEXTAREA" || tn === "SELECT" || (tg && tg.isContentEditable) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (lbmodal && lbmodal.classList.contains("on")) return;
+      if (state !== "flying") {   // a key held through the hit must not wipe the result screen
+        if (e.repeat || Date.now() - endAt < 800) return;
+        var r = cv.getBoundingClientRect(); if (r.bottom < 60 || r.top > innerHeight - 60) return;
+      }
       if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") keySteer = -1;
       else if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keySteer = 1;
       else return;
