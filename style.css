@@ -71,6 +71,8 @@ canvas{width:100%;height:100%;display:block;touch-action:none}
 .lbform input:focus{border-color:var(--accent)}
 .lbform .btn{padding:10px 20px;font-size:14px}
 .lbmsg{font-family:var(--mono);font-size:13px;color:var(--ok);min-height:16px}
+.lbmsg.err{color:var(--drone);font-family:var(--sans)}
+@media(max-width:640px){.lbform input{font-size:16px}}
 
 /* button row + ghost button */
 .btnrow{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
